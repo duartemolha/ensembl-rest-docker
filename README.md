@@ -38,5 +38,8 @@ curl 'localhost:8080/lookup/id/ENSG00000157764?' -H 'Content-type:application/js
 
 Result:
 ```
-{"canonical_transcript":"ENST00000646891.2","version":14,"source":"ensembl_havana","biotype":"protein_coding","display_name":"BRAF","start":140719327,"strand":-1,"assembly_name":"GRCh38","logic_name":"ensembl_havana_gene_homo_sapiens","db_type":"core","object_type":"Gene","description":"B-Raf proto-oncogene, serine/threonine kinase [Source:HGNC Symbol;Acc:HGNC:1097]","species":"homo_sapiens","id":"ENSG00000157764","seq_region_name":"7","end":140924929}
+{"db_type":"core","strand":-1,"start":140719327,"source":"ensembl_havana","biotype":"protein_coding","assembly_name":"GRCh38","id":"ENSG00000157764","object_type":"Gene","species":"homo_sapiens","display_name":"BRAF","end":140924929,"version":14,"description":"B-Raf proto-oncogene, serine/threonine kinase [Source:HGNC Symbol;Acc:HGNC:1097]","logic_name":"ensembl_havana_gene_homo_sapiens","seq_region_name":"7"}
 ```
+
+
+

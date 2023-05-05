@@ -8,10 +8,14 @@ ARG DB_USER
 ARG DB_PASSWORD
 ARG VERSION
 ARG ASSEMBLY
+ARG MAX_REQUESTS_PER_SECOND
 
 # these are derived variables
 ARG VEP_FASTA="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}/Homo_sapiens.${ASSEMBLY}.dna.toplevel.fa"
 ARG VEP_CACHE_DIR="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}"
+ARG MAX_REQUESTS_PER_SECOND_EXCEEDED=$((MAX_REQUESTS_PER_SECOND + 1))
+ARG MAX_REQUESTS_PER_HOUR=$((MAX_REQUESTS_PER_SECOND * 3600))
+
 ARG BRANCH=release/$VERSION
 
 
@@ -87,7 +91,10 @@ RUN apt-get install -y \
     samtools \
     tabix
 
-
+RUN cpanm Bio::DB::HTS Bio::DB::BigFile Test::Time::HiRes Readonly::XS
+RUN cpanm Task::Catalyst
+RUN cpanm Catalyst::Devel
+RUN cpanm --installdeps .
 
 WORKDIR /opt/bioperl
 RUN wget -nc https://github.com/bioperl/bioperl-live/archive/release-1-6-924.zip && \
@@ -138,36 +145,34 @@ RUN make
 WORKDIR ${KENT_SRC}/jkOwnLib
 RUN make && ln -s ${KENT_SRC}/lib/x86_64/* ${KENT_SRC}/lib/
 
-
-
 WORKDIR /opt/ensembl-rest
 COPY ensembl_rest_template.conf ensembl_rest.conf.default
 
-
 # Replace the password placeholder in the configuration template and save it as 'conf'
-RUN sed -i "s/{{DB_HOST}}/${DB_HOST}/" ensembl_rest.conf.default && \
-    sed -i "s/{{DB_PORT}}/${DB_PORT}/" ensembl_rest.conf.default && \
-    sed -i "s/{{DB_USER}}/${DB_USER}/" ensembl_rest.conf.default && \
-    if [ "${DB_PASSWORD}" = "" ]; then \
-    sed -i 's/{{DB_PASSWORD}}//g' ensembl_rest.conf.default; \
+RUN sed -i "s/{{DB_HOST}}/${DB_HOST}/" ensembl_rest.conf.default
+RUN sed -i "s/{{DB_PORT}}/${DB_PORT}/" ensembl_rest.conf.default
+RUN sed -i "s/{{DB_USER}}/${DB_USER}/" ensembl_rest.conf.default
+RUN sed -i "s/{{VERSION}}/${VERSION}/" ensembl_rest.conf.default
+RUN sed -i "s@{{VEP_FASTA}}@${VEP_FASTA}@" ensembl_rest.conf.default
+RUN sed -i "s@{{VEP_CACHE_DIR}}@${VEP_CACHE_DIR}@" ensembl_rest.conf.default
+RUN sed -i "s@{{VEP_PLUGIN_CONFIG}}@@" ensembl_rest.conf.default
+RUN sed -i "s@{{VEP_PLUGIN_DIR}}@@" ensembl_rest.conf.default
+
+RUN if [ "${DB_PASSWORD}" = "" ]; then \
+    sed -i "s#{{DB_PASSWORD}}##g" ensembl_rest.conf.default; \
     else \
-    sed -i 's/{{DB_PASSWORD}}/pass = ${DB_PASSWORD}/g' ensembl_rest.conf.default; \
-    fi  && \
-    sed -i "s/{{VERSION}}/${VERSION}/" ensembl_rest.conf.default && \
-    sed -i "s@{{VEP_FASTA}}@${VEP_FASTA}@" ensembl_rest.conf.default && \
-    sed -i "s@{{VEP_CACHE_DIR}}@${VEP_CACHE_DIR}@" ensembl_rest.conf.default && \
-    sed -i "s@{{VEP_PLUGIN_CONFIG}}@@" ensembl_rest.conf.default && \
-    sed -i "s@{{VEP_PLUGIN_DIR}}@@" ensembl_rest.conf.default && \
-    if [ "${ASSEMBLY}" = "GRCh38" ]; then \
+    sed -i "s#{{DB_PASSWORD}}#pass = ${DB_PASSWORD}#g" ensembl_rest.conf.default; \
+    fi 
+
+RUN if [ "${ASSEMBLY}" = "GRCh38" ]; then \
     sed -i 's/{{COMPARA_SETTINGS}}/compara_grch37.conf = compara.conf/g' ensembl_rest.conf.default; \
     elif [ "${ASSEMBLY}" = "GRCh37" ]; then \
     sed -i 's/{{COMPARA_SETTINGS}}/compara.conf = compara_grch37.conf/g' ensembl_rest.conf.default; \
     fi
 
-RUN cpanm Bio::DB::HTS Bio::DB::BigFile Test::Time::HiRes Readonly::XS
-RUN cpanm Task::Catalyst
-RUN cpanm Catalyst::Devel
-RUN cpanm --installdeps .
+COPY ensrest.psgi ensrest.psgi
+RUN sed -i "s@{{MAX_REQUESTS_PER_SECOND}}@${MAX_REQUESTS_PER_SECOND}@" ensrest.psgi
+
 RUN perl Makefile.PL
 
 EXPOSE 80

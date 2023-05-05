@@ -73,4 +73,5 @@ check_var "$ASSEMBLY" "ASSEMBLY"
 
 
 # Build the Docker image using the --build-arg flag to pass the value of the environment variable
+echo "docker build $build_args -t $BUILD_NAME ."
 docker build $build_args -t $BUILD_NAME .
