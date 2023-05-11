@@ -11,14 +11,7 @@ ARG VERSION
 ARG ASSEMBLY
 ARG MAX_REQUESTS_PER_SECOND
 
-# these are derived variables
-ARG VEP_FASTA="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}/Homo_sapiens.${ASSEMBLY}.dna.toplevel.fa"
-ARG VEP_CACHE_DIR="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}"
-ARG MAX_REQUESTS_PER_SECOND_EXCEEDED=$((MAX_REQUESTS_PER_SECOND + 1))
-ARG MAX_REQUESTS_PER_HOUR=$((MAX_REQUESTS_PER_SECOND * 3600))
-
 ARG BRANCH=release/$VERSION
-
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PERL5LIB=/opt/ensembl/modules:/opt/ensembl-variation/modules:/opt/ensembl-vep/modules:/opt/ensembl-compara/modules:/opt/ensembl-funcgen/modules:/opt/ensembl-metadata/modules:/opt/ensembl-io/modules:/opt/bioperl
@@ -90,7 +83,8 @@ RUN apt-get install -y \
     unzip \
     wget \
     samtools \
-    tabix
+    tabix \
+    nano
 
 WORKDIR /opt/bioperl
 RUN wget -nc https://github.com/bioperl/bioperl-live/archive/release-1-6-924.zip && \
@@ -114,9 +108,21 @@ RUN git ensembl --clone --shallow --depth 1 --branch=${BRANCH} --secondary_branc
 WORKDIR /opt/ensembl-vep
 RUN perl INSTALL.pl -a cf --CACHE_VERSION ${VERSION} -p -t -l --NO_BIOPERL -s homo_sapiens -y ${ASSEMBLY}
 
-RUN bgzip -@ 10 -c ${VEP_FASTA} > "${VEP_FASTA}.gz"
-ARG VEP_FASTA="${VEP_FASTA}.gz"
-RUN samtools faidx ${VEP_FASTA}
+
+ARG VEP_FASTA="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}/Homo_sapiens.${ASSEMBLY}.dna.toplevel.fa"
+ARG VEP_FASTA_ALT="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}/Homo_sapiens.${ASSEMBLY}.75.dna.primary_assembly.fa"
+ARG VEP_FASTA_FINAL="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}/Homo_sapiens.${ASSEMBLY}.fa"
+
+RUN if [ -f "${VEP_FASTA}" ]; then \
+        bgzip -@ 10 -c ${VEP_FASTA} > "${VEP_FASTA_FINAL}.gz"; \
+    elif [ -f "${VEP_FASTA_ALT}" ]; then \
+        bgzip -@ 10 -c ${VEP_FASTA_ALT} > "${VEP_FASTA_FINAL}.gz"; \
+    else \
+        echo "Neither file was found"; \
+        exit 1; \
+    fi \
+    samtools faidx ${VEP_FASTA_FINAL};
+
 
 WORKDIR /opt
 
@@ -142,7 +148,10 @@ WORKDIR ${KENT_SRC}/jkOwnLib
 RUN make && ln -s ${KENT_SRC}/lib/x86_64/* ${KENT_SRC}/lib/
 
 WORKDIR /opt/ensembl-rest
-COPY ensembl_rest_template.conf ensembl_rest.conf.default
+COPY template_files/ensembl_rest_template.conf ensembl_rest.conf.default
+
+
+ARG VEP_CACHE_DIR="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}"
 
 # Replace the password placeholder in the configuration template and save it as 'conf'
 RUN sed -i "s/{{DB_HOST}}/${DB_HOST}/" ensembl_rest.conf.default
@@ -150,7 +159,7 @@ RUN sed -i "s/{{DB_PORT}}/${DB_PORT}/" ensembl_rest.conf.default
 RUN sed -i "s/{{DB_USER}}/${DB_USER}/" ensembl_rest.conf.default
 RUN sed -i "s/{{DB_VERSION}}/${DB_VERSION}/" ensembl_rest.conf.default
 RUN sed -i "s/{{VERSION}}/${VERSION}/" ensembl_rest.conf.default
-RUN sed -i "s@{{VEP_FASTA}}@${VEP_FASTA}@" ensembl_rest.conf.default
+RUN sed -i "s@{{VEP_FASTA}}@${VEP_FASTA_FINAL}@" ensembl_rest.conf.default
 RUN sed -i "s@{{VEP_CACHE_DIR}}@${VEP_CACHE_DIR}@" ensembl_rest.conf.default
 RUN sed -i "s@{{VEP_PLUGIN_CONFIG}}@@" ensembl_rest.conf.default
 RUN sed -i "s@{{VEP_PLUGIN_DIR}}@@" ensembl_rest.conf.default
@@ -170,8 +179,13 @@ RUN if [ "${ASSEMBLY}" = "GRCh38" ]; then \
     sed -i 's/{{COMPARA_SETTINGS}}/compara.conf = compara_grch37.conf/g' ensembl_rest.conf.default; \
     fi
 
-COPY ensembl_rest.psgi ensembl_rest.psgi
-RUN sed -i "s@{{MAX_REQUESTS_PER_SECOND}}@${MAX_REQUESTS_PER_SECOND}@" ensrest.psgi
+COPY template_files/ensrest.psgi.default.template /opt/ensembl-rest/configurations/production/ensrest.psgi.default
+
+ARG MAX_REQUESTS_PER_SECOND_EXCEEDED=$((MAX_REQUESTS_PER_SECOND + 1))
+ARG MAX_REQUESTS_PER_HOUR=$((MAX_REQUESTS_PER_SECOND * 3600))
+
+RUN sed -i "s@{{MAX_REQUESTS_PER_SECOND}}@${MAX_REQUESTS_PER_SECOND}@g" /opt/ensembl-rest/configurations/production/ensrest.psgi.default
+RUN sed -i "s@{{MAX_REQUESTS_PER_HOUR}}@${MAX_REQUESTS_PER_HOUR}@g" /opt/ensembl-rest/configurations/production/ensrest.psgi.default
 
 RUN cpanm Bio::DB::HTS Bio::DB::BigFile Test::Time::HiRes Readonly::XS
 RUN cpanm Task::Catalyst

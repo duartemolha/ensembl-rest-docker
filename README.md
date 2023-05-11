@@ -7,8 +7,8 @@ git clone https://github.com/duartemolha/ensembl-rest-docker.git
 
 cd ensembl-rest-docker
 ```
-To build your image you can use one of the ready made .env_template files or created one of your own contaning the same arguments
-I.e. Rename one of the 2 .env.template_grch38 or .env.template_grch37 files to .env and modify its contents if you want to connect to a different server. Currently they are set with the default ensembl settings and targeting API release 102 
+To build your image you can use one of the ready made .env_ensembl files contained in "connection_conf_files" folder or creat one of your own contaning the same arguments
+I.e. Rename one of the 2 connection_conf_files/.env.ensembl_grch38 or connection_conf_files/.env.ensembl_grch37 files to .env and modify its contents if you want to connect to a different server. Currently they are set with the default ensembl settings and targeting API release 109 
 
 Build the docker image:
 
@@ -17,10 +17,10 @@ bash build.sh \
     --build-name [name_of_container (default: ensembl-rest)] \
     --env-file [env file (default: .env)]
 
-# for example you could just use the ready made template file to create a rest server for GRCH38 as such:
+# for example you could just use the ready made template file to create a rest server for GRCh38 as such:
 bash build.sh \
     --build-name ensembl-rest-grch38 \
-    --env-file .env.template_grch38
+    --env-file connection_conf_files/.env.ensembl_grch38
 
 ```
 
@@ -37,8 +37,25 @@ curl 'localhost:8080/lookup/id/ENSG00000157764?' -H 'Content-type:application/js
 ```
 
 Result:
-```
-{"db_type":"core","strand":-1,"start":140719327,"source":"ensembl_havana","biotype":"protein_coding","assembly_name":"GRCh38","id":"ENSG00000157764","object_type":"Gene","species":"homo_sapiens","display_name":"BRAF","end":140924929,"version":14,"description":"B-Raf proto-oncogene, serine/threonine kinase [Source:HGNC Symbol;Acc:HGNC:1097]","logic_name":"ensembl_havana_gene_homo_sapiens","seq_region_name":"7"}
+
+
+```json
+{   "db_type":"core",
+    "strand":-1,
+    "start":140719327,
+    "source":"ensembl_havana",
+    "biotype":"protein_coding",
+    "assembly_name":"GRCh38",
+    "id":"ENSG00000157764",
+    "object_type":"Gene",
+    "species":"homo_sapiens",
+    "display_name":"BRAF",
+    "end":140924929,
+    "version":14,
+    "description":"B-Raf proto-oncogene, serine/threonine kinase [Source:HGNC Symbol;Acc:HGNC:1097]",
+    "logic_name":"ensembl_havana_gene_homo_sapiens",
+    "seq_region_name":"7"
+}
 ```
 
 
