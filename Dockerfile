@@ -114,15 +114,16 @@ ARG VEP_FASTA_ALT="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}/Homo_sapiens.$
 ARG VEP_FASTA_FINAL="/root/.vep/homo_sapiens/${VERSION}_${ASSEMBLY}/Homo_sapiens.${ASSEMBLY}.fa"
 
 RUN if [ -f "${VEP_FASTA}" ]; then \
+        echo "Compressing  ${VEP_FASTA} "; \
         bgzip -@ 10 -c ${VEP_FASTA} > "${VEP_FASTA_FINAL}.gz"; \
     elif [ -f "${VEP_FASTA_ALT}" ]; then \
+        echo "Compressing  ${VEP_FASTA_ALT}"; \
         bgzip -@ 10 -c ${VEP_FASTA_ALT} > "${VEP_FASTA_FINAL}.gz"; \
     else \
         echo "Neither file was found"; \
         exit 1; \
-    fi \
-    samtools faidx ${VEP_FASTA_FINAL};
-
+    fi; \
+    samtools faidx "${VEP_FASTA_FINAL}.gz";
 
 WORKDIR /opt
 
