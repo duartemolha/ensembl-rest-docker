@@ -7,15 +7,15 @@ git clone https://github.com/duartemolha/ensembl-rest-docker.git
 
 cd ensembl-rest-docker
 ```
-To build your image you can use one of the ready made .env_ensembl files contained in "connection_conf_files" folder or creat one of your own contaning the same arguments
-I.e. Rename one of the 2 connection_conf_files/.env.ensembl_grch38 or connection_conf_files/.env.ensembl_grch37 files to .env and modify its contents if you want to connect to a different server. Currently they are set with the default ensembl settings and targeting API release 109 
+To build your image you can use one of the ready made .env_ensembl files contained in "connection_conf_files" folder or create one of your own contaning the same arguments
+I.e. Rename one of the 2 connection_conf_files/.env.ensembl_grch38 or connection_conf_files/.env.ensembl_grch37 files to .env_custom and modify its contents if you want to connect to a different server. Currently they are set with the default ensembl settings and targeting API release 109 
 
 Build the docker image:
 
 ```
 bash build.sh \
     --build-name [name_of_container (default: ensembl-rest)] \
-    --env-file [env file (default: .env)]
+    --env-file [env file (required)]
 
 # for example you could just use the ready made template file to create a rest server for GRCh38 as such:
 bash build.sh \

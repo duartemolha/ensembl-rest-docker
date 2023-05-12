@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 # Default values
-ENV_FILE_PATH="./.env"
+ENV_FILE_PATH=""
 BUILD_NAME="ensembl-rest"
+ENV_FILE_PROVIDED=0
 
 # Parse named parameters
 while [[ $# -gt 0 ]]; do
@@ -10,6 +11,7 @@ while [[ $# -gt 0 ]]; do
   case $key in
     -e|--env-file)
       ENV_FILE_PATH="$2"
+      ENV_FILE_PROVIDED=1
       shift # past argument
       shift # past value
       ;;
@@ -24,20 +26,26 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Check if --env-file argument was provided
+if [[ $ENV_FILE_PROVIDED -eq 0 ]]; then
+  echo "Error: --env-file argument not provided."
+  exit 1
+fi
 
-# Check if the .env file exists
 if [ ! -f "$ENV_FILE_PATH" ]; then
-  echo "Error: .env file not found."
-  echo "provide a .env file containing the following variables:"
+  echo "provide a file containing the following variables:"
   echo "For example to connect to ensembl servers:"
   echo "DB_HOST=ensembldb.ensembl.org"
   echo "DB_PORT=3306"
   echo "DB_USER=anonymous"
   echo "DB_PASSWORD="
-  echo "VERSION=102"
+  echo "DB_VERSION=109"
+  echo "VERSION=109"
   echo "ASSEMBLY=GRCh38"
+  echo "MAX_REQUESTS_PER_SECOND=15"
   exit 1
 fi
+
 
 # Function to load the .env file without exporting the variables
 load_env() {
@@ -68,6 +76,7 @@ check_var "$DB_HOST" "DB_HOST"
 check_var "$DB_PORT" "DB_PORT"
 check_var "$DB_USER" "DB_USER"
 check_var "$DB_PASSWORD" "DB_PASSWORD" "skip"
+check_var "$DB_VERSION" "DB_VERSION"
 check_var "$VERSION" "VERSION"
 check_var "$ASSEMBLY" "ASSEMBLY"
 
